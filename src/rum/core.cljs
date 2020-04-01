@@ -470,8 +470,11 @@
   (if-let [query-fn (some :q mixins)]
     (let [mixins (vec (concat [reactive] mixins))
           render (fn [state]
-                   (let [query-result (react (query-fn))
+                   (let [query-result (react (query-fn state))
                          render (apply render-body state query-result (:rum/args state))]
-                     [render state]))]
-      (build-ctor render (remove :q mixins) display-name))
+                     [render state]))
+          mixins-without-q (map (fn [m]
+                                  (dissoc m :q))
+                             mixins)]
+      (build-ctor render mixins-without-q display-name))
     (throw (js/Error. (str "No `q` specified in component: " display-name)))))
