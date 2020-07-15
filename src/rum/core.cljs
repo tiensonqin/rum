@@ -242,7 +242,7 @@
 
 (defn with-key
   "Adds React key to element.
-   
+
    ```
    (rum/defc label [text] [:div text])
 
@@ -255,7 +255,7 @@
 
 (defn with-ref
   "Adds React ref (string or callback) to element.
-   
+
    ```
    (rum/defc label [text] [:div text])
 
@@ -290,12 +290,12 @@
 
 (def static
   "Mixin. Will avoid re-render if none of component’s arguments have changed. Does equality check (`=`) on all arguments.
-  
+
    ```
    (rum/defc label < rum/static
      [text]
      [:div text])
-     
+
    (rum/mount (label \"abc\") js/document.body)
 
    ;; def != abc, will re-render
@@ -314,14 +314,14 @@
 
 (defn local
   "Mixin constructor. Adds an atom to component’s state that can be used to keep stuff during component’s lifecycle. Component will be re-rendered if atom’s value changes. Atom is stored under user-provided key or under `:rum/local` by default.
-  
+
    ```
    (rum/defcs counter < (rum/local 0 :cnt)
      [state label]
      (let [*cnt (:cnt state)]
        [:div {:on-click (fn [_] (swap! *cnt inc))}
          label @*cnt]))
-   
+
    (rum/mount (counter \"Click count: \"))
    ```"
   ([initial] (local initial :rum/local))
@@ -344,7 +344,7 @@
 
 (def reactive
   "Mixin. Works in conjunction with [[react]].
-  
+
    ```
    (rum/defc comp < rum/reactive
      [*counter]
@@ -374,7 +374,11 @@
                (add-watch ref key
                           (fn [_ _ p n]
                             (when (not= p n)
-                              (.setState comp (.-state comp)))))))
+                              (prn {:key key
+                                    :args (:rum/args state)})
+                              (rum.core/profile
+                               "setState"
+                               (.setState comp (.-state comp))))))))
            [dom (assoc next-state :rum.reactive/refs new-reactions)]))))
    :will-unmount
    (fn [state]
@@ -397,9 +401,9 @@
 (def ^{:style/indent 2
        :arglists '([refs key f] [refs key f opts])
        :doc "Use this to create “chains” and acyclic graphs of dependent atoms.
-   
+
              [[derived-atom]] will:
-          
+
              - Take N “source” refs.
              - Set up a watch on each of them.
              - Create “sink” atom.
@@ -416,19 +420,19 @@
              (def *x (derived-atom [*a *b] ::key
                        (fn [a b]
                          (str a \":\" b))))
-             
+
              (type *x)  ;; => clojure.lang.Atom
              (deref *x) ;; => \"0:1\"
-             
+
              (swap! *a inc)
              (deref *x) ;; => \"1:1\"
-             
+
              (reset! *b 7)
              (deref *x) ;; => \"1:7\"
              ```
 
              Arguments:
-          
+
              - `refs` - sequence of source refs,
              - `key`  - unique key to register watcher, same as in `clojure.core/add-watch`,
              - `f`    - function that must accept N arguments (same as number of source refs) and return a value to be written to the sink ref. Note: `f` will be called with already dereferenced values,
@@ -444,24 +448,24 @@
 (defn cursor-in
   "Given atom with deep nested value and path inside it, creates an atom-like structure
    that can be used separately from main atom, but will sync changes both ways:
-  
+
    ```
    (def db (atom { :users { \"Ivan\" { :age 30 }}}))
-   
+
    (def ivan (rum/cursor db [:users \"Ivan\"]))
    (deref ivan) ;; => { :age 30 }
-   
+
    (swap! ivan update :age inc) ;; => { :age 31 }
    (deref db) ;; => { :users { \"Ivan\" { :age 31 }}}
-   
+
    (swap! db update-in [:users \"Ivan\" :age] inc)
    ;; => { :users { \"Ivan\" { :age 32 }}}
-   
+
    (deref ivan) ;; => { :age 32 }
    ```
-  
+
    Returned value supports `deref`, `swap!`, `reset!`, watches and metadata.
-  
+
    The only supported option is `:meta`"
   [ref path & {:as options}]
   (if (instance? cursor/Cursor ref)

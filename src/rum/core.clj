@@ -73,25 +73,25 @@
   "```
    (defc name doc-string? (< mixins+)? [ params* ] render-body+)
    ```
-  
+
    Defc does couple of things:
-   
+
      1. Wraps body into daiquiri/compile-html
      2. Generates render function from that
      3. Takes render function and mixins, builds React class from them
      4. Using that class, generates constructor fn [args]->ReactElement
      5. Defines top-level var with provided name and assigns ctor to it
-  
+
    Usage:
-   
+
    ```
    (rum/defc label < rum/static [t]
      [:div t])
-  
+
    ;; creates React class
    ;; adds mixin rum/static
    ;; defines ctor fn (defn label [t] ...) => element
-  
+
    (label \"text\") ;; => returns React element built with label class
    ```"
   [& body]
@@ -101,7 +101,7 @@
   "```
    (defcs name doc-string? (< mixins+)? [ state-arg params* ] render-body+)
    ```
-   
+
    Same as [[defc]], but render will take additional first argument: component state."
   [& body]
   (-defc 'rum.core/build-defcs &env body))
@@ -160,7 +160,7 @@
 
 (defn with-key
   "Adds React key to element.
-   
+
    ```
    (rum/defc label [text] [:div text])
 
@@ -195,14 +195,14 @@
 
 (defn local
   "Mixin constructor. Adds an atom to component’s state that can be used to keep stuff during component’s lifecycle. Component will be re-rendered if atom’s value changes. Atom is stored under user-provided key or under `:rum/local` by default.
-  
+
    ```
    (rum/defcs counter < (rum/local 0 :cnt)
      [state label]
      (let [*cnt (:cnt state)]
        [:div {:on-click (fn [_] (swap! *cnt inc))}
          label @*cnt]))
-   
+
    (rum/mount (counter \"Click count: \"))
    ```"
   ([initial] (local initial :rum/local))
@@ -219,24 +219,24 @@
 (defn cursor-in
   "Given atom with deep nested value and path inside it, creates an atom-like structure
    that can be used separately from main atom, but will sync changes both ways:
-  
+
    ```
    (def db (atom { :users { \"Ivan\" { :age 30 }}}))
-   
+
    (def ivan (rum/cursor db [:users \"Ivan\"]))
    (deref ivan) ;; => { :age 30 }
-   
+
    (swap! ivan update :age inc) ;; => { :age 31 }
    (deref db) ;; => { :users { \"Ivan\" { :age 31 }}}
-   
+
    (swap! db update-in [:users \"Ivan\" :age] inc)
    ;; => { :users { \"Ivan\" { :age 32 }}}
-   
+
    (deref ivan) ;; => { :age 32 }
    ```
-  
+
    Returned value supports `deref`, `swap!`, `reset!`, watches and metadata.
-  
+
    The only supported option is `:meta`"
   ^rum.cursor.Cursor [ref path & {:as options}]
   (if (instance? Cursor ref)
@@ -251,9 +251,9 @@
 (def ^{:style/indent 2
        :arglists '([refs key f] [refs key f opts])
        :doc "Use this to create “chains” and acyclic graphs of dependent atoms.
-   
+
              [[derived-atom]] will:
-          
+
              - Take N “source” refs.
              - Set up a watch on each of them.
              - Create “sink” atom.
@@ -270,19 +270,19 @@
              (def *x (derived-atom [*a *b] ::key
                        (fn [a b]
                          (str a \":\" b))))
-             
+
              (type *x)  ;; => clojure.lang.Atom
              (deref *x) ;; => \"0:1\"
-             
+
              (swap! *a inc)
              (deref *x) ;; => \"1:1\"
-             
+
              (reset! *b 7)
              (deref *x) ;; => \"1:7\"
              ```
 
              Arguments:
-          
+
              - `refs` - sequence of source refs,
              - `key`  - unique key to register watcher, same as in `clojure.core/add-watch`,
              - `f`    - function that must accept N arguments (same as number of source refs) and return a value to be written to the sink ref. Note: `f` will be called with already dereferenced values,
@@ -460,3 +460,12 @@
     (if (:ns &env)
       `(adapt-class-helper ~type ~(compiler/compile-attrs attrs) (cljs.core/array ~@(map #(compiler/compile-html % &env) children)))
       `(JSComponent. (*render-js-component* '~type ~attrs [~@children])))))
+
+(defmacro profile [k & body]
+  `(if goog.DEBUG
+     (let [k# ~k]
+       (.time js/console k#)
+       (let [res# (do ~@body)]
+         (.timeEnd js/console k#)
+         res#))
+     (do ~@body)))
